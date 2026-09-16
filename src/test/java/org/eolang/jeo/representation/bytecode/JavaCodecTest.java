@@ -44,6 +44,26 @@ final class JavaCodecTest {
             {'a', DataType.CHAR, new byte[]{0, 97}},
             {new byte[]{0, 1, 2, 3}, DataType.BYTES, new byte[]{0, 1, 2, 3}},
             {"hello, world!", DataType.STRING, "hello, world!".getBytes(StandardCharsets.UTF_8)},
+            {
+                String.valueOf(new char[]{'a', (char) 0xD800, 'b'}),
+                DataType.STRING,
+                new byte[]{97, (byte) 0xED, (byte) 0xA0, (byte) 0x80, 98},
+            },
+            {
+                String.valueOf(new char[]{'a', (char) 0xDC00}),
+                DataType.STRING,
+                new byte[]{97, (byte) 0xED, (byte) 0xB0, (byte) 0x80},
+            },
+            {
+                String.valueOf(new char[]{'a', (char) 0xD83D, (char) 0xDE00, 'b'}),
+                DataType.STRING,
+                new byte[]{97, (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x80, 98},
+            },
+            {
+                String.valueOf(new char[]{'a', (char) 0, 'b'}),
+                DataType.STRING,
+                new byte[]{97, 0, 98},
+            },
         };
     }
 }
