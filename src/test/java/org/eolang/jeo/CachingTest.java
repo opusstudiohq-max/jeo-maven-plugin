@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.FileTime;
 import java.util.concurrent.TimeUnit;
 import org.hamcrest.MatcherAssert;
@@ -49,6 +50,29 @@ final class CachingTest {
     }
 
     @Test
+    void writesTargetWithoutParentDirectory(@TempDir final Path temp) throws IOException {
+        final Path target = Paths.get("caching-test-without-parent.xmir");
+        final MockTrans mock = new CachingTest.MockTrans(temp, target);
+        mock.createFrom(0);
+        final String transformed;
+        final boolean written;
+        try {
+            transformed = new String(new Caching(mock).transform(), StandardCharsets.UTF_8);
+            written = Files.exists(target);
+        } finally {
+            Files.deleteIfExists(target);
+        }
+        MatcherAssert.assertThat(
+            String.format(
+                "Caching must write a target without a parent directory, and leave it at '%s'",
+                target
+            ),
+            String.format("%s/%b", transformed, written),
+            Matchers.equalTo(String.format("%s/%b", MockTrans.PERFORMED, true))
+        );
+    }
+
+    @Test
     void performsTransformationSinceNotYetTransformed(@TempDir final Path temp) {
         final MockTrans mock = new CachingTest.MockTrans(temp);
         mock.createFrom(0);
@@ -77,12 +101,28 @@ final class CachingTest {
         private final Path temp;
 
         /**
+         * Target file.
+         */
+        private final Path tgt;
+
+        /**
          * Constructor.
          *
          * @param temp Temporary directory
          */
         MockTrans(final Path temp) {
+            this(temp, temp.resolve("to.xmir"));
+        }
+
+        /**
+         * Constructor.
+         *
+         * @param temp Temporary directory for the source file
+         * @param tgt Target file
+         */
+        MockTrans(final Path temp, final Path tgt) {
             this.temp = temp;
+            this.tgt = tgt;
         }
 
         @Override
@@ -92,7 +132,7 @@ final class CachingTest {
 
         @Override
         public Path target() {
-            return this.temp.resolve("to.xmir");
+            return this.tgt;
         }
 
         @Override

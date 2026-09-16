@@ -73,7 +73,7 @@ public final class Caching implements Transformation {
             result = Files.readAllBytes(target);
         } else {
             final byte[] transform = this.origin.transform();
-            Files.createDirectories(target.getParent());
+            Files.createDirectories(target.toAbsolutePath().getParent());
             Files.write(target, transform);
             result = transform;
         }
