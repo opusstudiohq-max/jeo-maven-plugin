@@ -4,8 +4,8 @@
  */
 package org.eolang.jeo.representation.bytecode;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 /**
@@ -59,7 +59,7 @@ public final class JavaCodec implements Codec {
                 break;
             case STRING:
                 result = Optional.ofNullable(value).map(String::valueOf)
-                    .map(unicode -> unicode.getBytes(StandardCharsets.UTF_8))
+                    .map(JavaCodec::encoded)
                     .orElse(null);
                 break;
             case BYTES:
@@ -104,7 +104,7 @@ public final class JavaCodec implements Codec {
                 break;
             case STRING:
                 result = Optional.ofNullable(bytes)
-                    .map(all -> new String(all, StandardCharsets.UTF_8))
+                    .map(JavaCodec::decoded)
                     .orElse("");
                 break;
             case BYTES:
@@ -117,6 +117,66 @@ public final class JavaCodec implements Codec {
                 throw new UnsupportedDataType(type);
         }
         return result;
+    }
+
+    private static byte[] encoded(final String text) {
+        final ByteArrayOutputStream out = new ByteArrayOutputStream(text.length());
+        int idx = 0;
+        while (idx < text.length()) {
+            final int point = text.codePointAt(idx);
+            if (point < 0x80) {
+                out.write(point);
+            } else if (point < 0x800) {
+                out.write(0xC0 | point >> 6);
+                out.write(0x80 | point & 0x3F);
+            } else if (point < 0x10000) {
+                out.write(0xE0 | point >> 12);
+                out.write(0x80 | point >> 6 & 0x3F);
+                out.write(0x80 | point & 0x3F);
+            } else {
+                out.write(0xF0 | point >> 18);
+                out.write(0x80 | point >> 12 & 0x3F);
+                out.write(0x80 | point >> 6 & 0x3F);
+                out.write(0x80 | point & 0x3F);
+            }
+            idx += Character.charCount(point);
+        }
+        return out.toByteArray();
+    }
+
+    private static String decoded(final byte[] bytes) {
+        final StringBuilder out = new StringBuilder(bytes.length);
+        int idx = 0;
+        while (idx < bytes.length) {
+            final int lead = bytes[idx] & 0xFF;
+            final int size;
+            final int mask;
+            if (lead < 0x80) {
+                size = 1;
+                mask = 0x7F;
+            } else if (lead < 0xE0) {
+                size = 2;
+                mask = 0x1F;
+            } else if (lead < 0xF0) {
+                size = 3;
+                mask = 0x0F;
+            } else {
+                size = 4;
+                mask = 0x07;
+            }
+            if (idx + size > bytes.length) {
+                throw new IllegalArgumentException(
+                    String.format("Truncated UTF-8 sequence at byte %d of %d", idx, bytes.length)
+                );
+            }
+            int point = lead & mask;
+            for (int pos = 1; pos < size; ++pos) {
+                point = point << 6 | bytes[idx + pos] & 0x3F;
+            }
+            out.appendCodePoint(point);
+            idx += size;
+        }
+        return out.toString();
     }
 
     private static byte[] booleanBytes(final Object value) {
