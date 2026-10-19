@@ -79,6 +79,18 @@ final class AssemblingTest {
                 Paths.get("outout/XmlValue.class")
             ),
             Arguments.of(
+                Paths.get("src"),
+                Paths.get("out"),
+                Paths.get("src/XmlValue.xmir.xmir"),
+                Paths.get("out/XmlValue.xmir.class")
+            ),
+            Arguments.of(
+                Paths.get("src"),
+                Paths.get("out"),
+                Paths.get("src/pkg.xmir/XmlValue.xmir"),
+                Paths.get("out/pkg.xmir/XmlValue.class")
+            ),
+            Arguments.of(
                 Paths.get("a/b/c"),
                 Paths.get("d/e/f"),
                 Paths.get("a/b/c/x/y/z/File.xmir"),
